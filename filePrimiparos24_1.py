@@ -1,22 +1,23 @@
 import pandas as pd
+from openpyxl import load_workbook
 
 rutaPrimiparo = "C:/Users/jodam/Downloads/POLITICA_GRATUIDAD/PIAM2024_1/INSUMODARCA/CI/PRIMIPAROSAENVIAR.xlsx"
 primiparoConsolidado = 'TODOS'
 
 def lectura(ruta,hoja):
     
-    with pd.ExcelFile(ruta) as xls:
-        hojas_disponibles = xls.sheet_names
+    xls = pd.ExcelFile(ruta, engine='openpyxl')
+    hojas_disponibles = xls.sheet_names
     print(hojas_disponibles)
     dataframe = pd.read_excel(ruta,sheet_name=hoja)
     return dataframe
 
-def visualizador(dataframe):
-    print(dataframe.head())
+#def visualizador(dataframe):
+#    return dataframe.head()
 
-def info(ruta,hoja):
-    dataframe = lectura(ruta,hoja)
-    return dataframe.info()
+#def info(ruta,hoja):
+#    dataframe = lectura(ruta,hoja)
+#    return dataframe.info()
 
 def estadoLiquidacionPolitica(valor):
     if valor == 0:
@@ -41,22 +42,48 @@ def prevalidacionIESPolitica(estrato, sisben):
 
 def calculadoradeMatricula(ruta,hoja):
     dataframe = lectura(ruta,hoja)
-    dataframe['BRUTA']= dataframe['DERECHOS_MATRICULA'] + dataframe['BIBLIOTECA_DEPORTES'] + dataframe['LABORATORIOS'] + dataframe['RECURSOS_COMPUTACIONALES'] + dataframe['SEGURO_ESTUDIANTIL'] + dataframe['VRES_COMPLEMENTARIOS'] + dataframe['RESIDENCIAS'] +dataframe['REPETICIONES']
-    dataframe['BRUTAORD']= dataframe['DERECHOS_MATRICULA'] + dataframe['BIBLIOTECA_DEPORTES'] + dataframe['LABORATORIOS'] + dataframe['RECURSOS_COMPUTACIONALES'] + dataframe['VRES_COMPLEMENTARIOS'] + dataframe['RESIDENCIAS'] +dataframe['REPETICIONES']
-    dataframe['MERITO']= - dataframe['CONVENIO_DESCENTRALIZACION'] - dataframe['BECA'] - dataframe['MATRICULA_HONOR'] - dataframe['MEDIA_MATRICULA_HONOR'] - dataframe['TRABAJO_GRADO'] - dataframe['DOS_PROGRAMAS'] - dataframe['DESCUENTO_HERMANO'] - dataframe['ESTIMULO_EMP_DTE_PLANTA'] - dataframe['EXEN_HIJOS_CONYUGE_CATEDRA'] - dataframe['EXEN_HIJOS_CONYUGE_OCASIONAL'] - dataframe['HIJOS_TRABAJADORES_OFICIALES'] - dataframe['ACTIVIDAES_LUDICAS_DEPOR'] - dataframe['DESCUENTOS'] - dataframe['SERVICIOS_RELIQUIDACION']
+    dataframe['BRUTA']= dataframe['DERECHOS_MATRICULA'] + dataframe['BIBLIOTECA_DEPORTES'] +\
+                        dataframe['LABORATORIOS'] + dataframe['RECURSOS_COMPUTACIONALES'] +\
+                        dataframe['SEGURO_ESTUDIANTIL'] + dataframe['VRES_COMPLEMENTARIOS'] +\
+                        dataframe['RESIDENCIAS'] +dataframe['REPETICIONES']
+    dataframe['BRUTAORD']=  dataframe['DERECHOS_MATRICULA'] + dataframe['BIBLIOTECA_DEPORTES'] +\
+                            dataframe['LABORATORIOS'] + dataframe['RECURSOS_COMPUTACIONALES'] +\
+                            dataframe['VRES_COMPLEMENTARIOS'] + dataframe['RESIDENCIAS'] +\
+                            dataframe['REPETICIONES']
+    dataframe['MERITO']= -dataframe['CONVENIO_DESCENTRALIZACION'] - dataframe['BECA'] -\
+                          dataframe['MATRICULA_HONOR'] - dataframe['MEDIA_MATRICULA_HONOR'] -\
+                          dataframe['TRABAJO_GRADO'] - dataframe['DOS_PROGRAMAS'] -\
+                          dataframe['DESCUENTO_HERMANO'] - dataframe['ESTIMULO_EMP_DTE_PLANTA'] -\
+                          dataframe['EXEN_HIJOS_CONYUGE_CATEDRA'] - dataframe['EXEN_HIJOS_CONYUGE_OCASIONAL'] -\
+                          dataframe['HIJOS_TRABAJADORES_OFICIALES'] - dataframe['ACTIVIDAES_LUDICAS_DEPOR'] -\
+                          dataframe['DESCUENTOS'] - dataframe['SERVICIOS_RELIQUIDACION']
     dataframe['NETAORD']= dataframe['BRUTAORD'] + dataframe['VOTO']
     dataframe['NETA']= dataframe['BRUTA'] + dataframe['VOTO'] - dataframe['MERITO']
     dataframe['ESTADOLIQUIDACION'] = dataframe['GRATUIDAD_MATRICULA'].apply(estadoLiquidacionPolitica)
-    dataframe.to_excel(rutaPrimiparo,index=False)    
+    
+    with pd.ExcelWriter(ruta, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
+        dataframe.to_excel(writer, sheet_name=hoja, index=False)
+
 
 def calculadoradeEstados(ruta,hoja):
     dataframe = lectura(ruta,hoja)
     dataframe['ESTADOPREVALIES'] = dataframe.apply(lambda row: prevalidacionIESPolitica(row['ESTRATO'], row['GRUPOSISBEN']), axis=1)
-    dataframe.to_excel(rutaPrimiparo,index=False)    
+    dataframe.to_excel(ruta, sheet_name=hoja, index=False)    
 
-#calculadoradeMatricula(rutaPrimiparo)
-#calculadoradeEstados(rutaPrimiparo)
+def copiarHojas(origen, destino):
+    wb_origen = load_workbook(origen)
+    wb_destino = load_workbook(destino)
+    for sheet in wb_origen.sheetnames:
+        ws = wb_origen[sheet]
+        wb_destino.create_sheet(title=sheet)
+        for row in ws.iter_rows():
+            wb_destino[sheet].append([cell.value for cell in row])
+    wb_destino.save(destino)
+
+calculadoradeMatricula(rutaPrimiparo,primiparoConsolidado)
+calculadoradeEstados(rutaPrimiparo,primiparoConsolidado)
+copiarHojas(rutaPrimiparo,rutaPrimiparo)
 
 
 #print(lectura(rutaPrimiparo,primiparoConsolidado))
-info(rutaPrimiparo,primiparoConsolidado)
+#info(rutaPrimiparo,primiparoConsolidado)
